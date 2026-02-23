@@ -77,6 +77,8 @@ Does this look good? Any changes before I generate?
 - **Split Layout 60/40** — content left, visual/icon composition right (explanations, spotlights)
 - **Dark Closing** — charcoal background, CTA, summary icons (bookend to title slide)
 
+You are not limited to the above. If the content calls for a new layout pattern, design one from scratch and add it to `lib/layouts/` after the deck is generated (see Layout Library rules below).
+
 ### Step 2 — Wait for User Confirmation
 
 Do not write any code until the user approves or modifies the plan. If the user suggests changes, update the plan and confirm again before proceeding.
@@ -85,27 +87,33 @@ Do not write any code until the user approves or modifies the plan. If the user 
 
 Once the plan is confirmed:
 
-1. Determine the output path using `lib/output.js`:
-   ```javascript
-   const { getOutputPath } = require("./lib/output");
-   const out = getOutputPath("brief topic", "Full Deck Title");
-   // Use out.filePath for writeFile, out.displayPath to report to user
+1. Create the work area for this deck:
+   ```
+   output/<topic-slug>/work/
+   ├── gen.js       ← runtime assembler script (never committed to repo)
+   └── plan.md      ← the confirmed deck plan (optional, for iteration reference)
    ```
 
-2. Write a new `.js` script (e.g. `gen-<topic>.js`) — **do not modify `generate-template.js`**
+2. Write `output/<topic-slug>/work/gen.js` — **never write runtime scripts to the repo root**
 
-3. Structure: pre-render all icons → build pres → add slides → writeFile
+3. Use layout library functions where a matching pattern exists:
+   ```javascript
+   const { addTitleSlide, addThreeColumnCards, ... } = require("../../lib/layouts");
+   ```
+   For slides that need a novel layout not in the library, write the slide function inline in gen.js. If that layout pattern is reusable, extract it into `lib/layouts/` afterward (see Layout Library rules).
+
+4. Script structure:
    ```javascript
    const icons = await preRenderIcons({ ... });   // parallel, at top
    const pres  = new PptxGenJS();
    pres.layout = "LAYOUT_16x9";
-   // ... add slides ...
+   // ... add slides using layout library + any bespoke functions ...
    await pres.writeFile({ fileName: out.filePath });
    ```
 
-4. Run the script: `node gen-<topic>.js`
+5. Run the script: `node output/<topic-slug>/work/gen.js`
 
-5. Report: "Generated: `output/topic/title-v1.pptx`"
+6. Report: "Generated: `output/topic/title-v1.pptx`"
 
 ### Step 4 — Visual QA Loop (MANDATORY)
 
@@ -155,7 +163,57 @@ If LibreOffice/pdftoppm is not installed, use manual coordinate checks:
 
 Tell the user: "Your deck is ready at `output/topic/title-v1.pptx`"
 
-When user iterates ("make slide 3 bolder", "add a metrics slide"), the next generation automatically becomes `v2`, `v3` etc. — previous versions are never overwritten.
+When user iterates ("make slide 3 bolder", "add a metrics slide"), edit `output/<topic>/work/gen.js` and re-run — the next version auto-increments (`v2`, `v3` etc.).
+
+---
+
+## File Ownership Rules
+
+### What belongs in the repo (permanent, reusable)
+
+```
+lib/
+├── theme.js         Brand colors, dimensions, shadow factory
+├── icons.js         preRenderIcons() utility
+├── shapes.js        Low-level shape helpers (addHeaderBar, addCard, etc.)
+├── output.js        Versioned output path management
+└── layouts/         Parameterized layout modules — NO real data, pure structure
+    ├── title-slide.js
+    ├── three-column.js
+    ├── card-grid.js
+    ├── process-flow.js
+    ├── icon-rows.js
+    ├── stat-callouts.js
+    ├── split-layout.js
+    ├── dark-closing.js
+    └── index.js
+
+examples/
+└── generate-template.js   Reference demo (do not use for real decks)
+```
+
+### What belongs in the work area (runtime, throwaway)
+
+```
+output/
+└── <topic-slug>/
+    ├── work/
+    │   ├── gen.js      ← assembler script for this deck (never committed)
+    │   └── plan.md     ← confirmed plan for this deck (never committed)
+    ├── <title>-v1.pptx
+    ├── <title>-v2.pptx
+    └── ...
+```
+
+`output/` is gitignored. Nothing inside it is ever committed. Work area scripts are kept only as long as the user is iterating on that deck.
+
+### Layout Library Rules
+
+- Every file in `lib/layouts/` must be **data-free** — no hardcoded content, colors, or icon choices from a specific deck
+- Each layout exports a single function: `(pres, data, icons)` — all content comes from `data`, all icons by key from `icons`
+- When a new layout pattern is invented during a project and it is **reusable** (not one-off), extract it from `gen.js` into a new `lib/layouts/<name>.js` and add it to `lib/layouts/index.js`
+- After adding a new layout to the library, commit it: `git add lib/layouts/ && git commit -m "Add <name> layout"`
+- Do not add a layout to the library if it is tightly coupled to specific content — keep it in `gen.js`
 
 ---
 
@@ -164,6 +222,8 @@ When user iterates ("make slide 3 bolder", "add a metrics slide"), the next gene
 ```
 output/
 └── <topic-slug>/
+    ├── work/
+    │   └── gen.js
     ├── <deck-title>-v1.pptx   ← first generation
     ├── <deck-title>-v2.pptx   ← after user feedback
     └── <deck-title>-v3.pptx   ← further iteration
@@ -187,16 +247,17 @@ Use `getOutputPath(briefTitle, deckTitle)` from `lib/output.js` — it handles s
 
 ```
 lib/
-├── theme.js    BRAND colors, SLIDE dimensions, cardShadow() factory
-├── icons.js    preRenderIcons() — batch async FA icon → base64 PNG
-├── shapes.js   addHeaderBar(), addCard(), addIconCircle(), addTitleDecorations(), etc.
-└── output.js   getOutputPath() — versioned output path management
+├── theme.js      BRAND colors, SLIDE dimensions, cardShadow() factory
+├── icons.js      preRenderIcons() — batch async FA icon → base64 PNG
+├── shapes.js     addHeaderBar(), addCard(), addIconCircle(), addTitleDecorations(), etc.
+├── output.js     getOutputPath() — versioned output path management
+└── layouts/      Parameterized layout modules (see Layout Library Rules above)
 
 examples/
-└── generate-template.js   Working demo — all 7 layout types (do not modify for real decks)
+└── generate-template.js   Working demo — all layout types (do not modify for real decks)
 
 assets/          Drop logo.png here for footer branding
-output/          All generated decks (auto-created by lib/output.js)
+output/          All generated decks + per-deck work areas (gitignored)
 ```
 
 ### Slide Dimensions
@@ -214,10 +275,9 @@ Content Y:    1.25" when header bar is present
 
 ```javascript
 // ── Output path (always use this) ──
-const { getOutputPath } = require("./lib/output");
+const { getOutputPath } = require("../../lib/output");  // from work/gen.js
 const out = getOutputPath("topic slug", "Full Deck Title");
 await pres.writeFile({ fileName: out.filePath });
-console.log("Saved:", out.displayPath);
 
 // ── Icons (pre-render at top of script) ──
 // react-icons color prop uses # prefix; pptxgenjs hex does NOT
@@ -226,16 +286,15 @@ const icons = await preRenderIcons({
   rocketR: [FaRocket, "#C74634"],   // colored icon on white card
 });
 
-// ── Slide skeleton ──
+// ── Layout library (preferred) ──
+const { addTitleSlide, addProcessFlow } = require("../../lib/layouts");
+addTitleSlide(pres, { line1, line2, subtitle, context });
+addProcessFlow(pres, { header, steps, notes }, icons);
+
+// ── Bespoke slide (when no library match) ──
 const slide = pres.addSlide();
 slide.background = { color: BRAND.slideBg };
-addHeaderBar(slide, "SLIDE TITLE");          // content starts at SLIDE.contentY = 1.25"
-
-// ── Icon in circle ──
-addIconCircle(slide, { x, y, size: 0.55, circleColor: BRAND.redAccent, iconData: icons.rocketW });
-
-// ── Card with accent bar ──
-addCard(slide, { x, y, w, h, accentColor: BRAND.palette[i] });
+addHeaderBar(slide, "SLIDE TITLE");   // content starts at SLIDE.contentY = 1.25"
 
 // ── Shadow — NEVER reuse objects (pptxgenjs mutates them) ──
 shadow: cardShadow()   // factory function, called fresh each time
@@ -251,6 +310,7 @@ shadow: cardShadow()   // factory function, called fresh each time
 5. **`paraSpaceAfter`** for bullet spacing — not `lineSpacing`
 6. **`margin: 0`** on text boxes aligned with shapes/icons
 7. **`y + h ≤ 5.075`** and **`x + w ≤ 9.5`** — always verify
+8. **Runtime scripts live in `output/<topic>/work/gen.js`** — never in repo root
 
 ### Default Theme Quick Reference
 
