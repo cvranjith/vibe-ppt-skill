@@ -237,6 +237,7 @@ Use `getOutputPath(briefTitle, deckTitle)` from `lib/output.js` — it handles s
 
 - **Vibe PPT, not Template PPT** — every deck is custom-designed. Layout choices come from the content, not a rotation schedule.
 - **Icons everywhere meaningful** — use Font Awesome icons (never unicode ●■▶★) on section heads, card titles, process steps, bullet groups. Don't overdo it — one icon per section/card, not per line.
+- **Icons must be prominent** — circles/squares containing icons must be large enough to be clearly legible. Minimum 0.5" diameter for standalone icons; use `pad: 0.09` (or less) so the icon fills the circle. Icon rows: scale to 80% of row height (cap 0.62"). Never use the default 0.12" pad.
 - **Vary layouts** — never use the same layout twice in a row
 - **Light mode by default** — Oracle Redwood Light. Dark mode only if user asks.
 - **Warm palette** — Redwood uses warm off-whites and charcoals. No cool blues or grays.
