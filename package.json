@@ -1,0 +1,17 @@
+{
+  "name": "ppt-gen",
+  "version": "1.0.0",
+  "description": "PowerPoint generation workspace using PptxGenJS + Font Awesome icons",
+  "scripts": {
+    "example": "node examples/generate-template.js",
+    "verify":  "node scripts/verify-setup.js",
+    "qa":      "bash qa.sh"
+  },
+  "dependencies": {
+    "pptxgenjs": "^3.12.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0",
+    "react-icons": "^5.4.0",
+    "sharp": "^0.33.0"
+  }
+}
